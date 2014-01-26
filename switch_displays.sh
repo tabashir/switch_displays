@@ -15,7 +15,8 @@ function check_progs {
 }
 
 function get_number_of_displays {
-  DISPLAY_COUNT=$(xrandr | grep " connected" | wc -l)
+  local DISPLAY_COUNT=$(xrandr | grep " connected" | wc -l)
+	echo "$DISPLAY_COUNT"
 }
 
 function grab_display {
@@ -56,9 +57,28 @@ function gather_windows_if_possible {
 	fi
 }
 
+function turn_off_connected_displays {
+	turn_off_display $EXT_DISP
+	turn_off_display $INT_DISP
+}
+
+function setup_connected_displays {
+# use this with <secondary_disp> <direction_of_secondary> <primary_disp>
+    if [ $DISPLAY_COUNT -lt 2 ]; then
+      echo "you don't have two displays"
+      exit 1
+    else
+      echo "using $1 $2 $3(pri)"
+			xrandr --output $1 --off
+			# turn_off_connected_displays
+			xrandr --output $3 --primary --auto
+			xrandr --output $1 --noprimary --auto --$2 $3
+    fi
+
+}
 
 check_progs
-get_number_of_displays
+DISPLAY_COUNT=$(get_number_of_displays)
 turn_off_disconnected_displays
 
 INT_DISP=$(grab_display $INT_PREFIX)
@@ -82,41 +102,17 @@ case "$1" in
     turn_on_display $EXT_DISP
 		gather_windows_if_possible
   ;;
-  both)
-    if [ $DISPLAY_COUNT -lt 2 ]; then
-      echo "you don't have two displays"
-      exit 1
-    else
-      echo "using both displays $EXT_DISP primary"
-			xrandr --output $EXT_DISP --primary --auto --pos 0x0 --output $INT_DISP --auto --right-of $EXT_DISP
-    fi
+  extprimary|ep|both)
+			setup_connected_displays $INT_DISP right-of $EXT_DISP
   ;;
-  bothalt)
-    if [ $DISPLAY_COUNT -lt 2 ]; then
-      echo "you don't have two displays"
-      exit 1
-    else
-      echo "using both displays $INT_DISP primary"
-			xrandr --output $INT_DISP --primary --auto --pos 0x0 --output $EXT_DISP --auto --left-of $INT_DISP
-    fi
+  extprimaryreverse|epr|bothalt)
+			setup_connected_displays $INT_DISP left-of $EXT_DISP
   ;;
-  classic)
-    if [ $DISPLAY_COUNT -lt 2 ]; then
-      echo "you don't have two displays"
-      exit 1
-    else
-      echo "using both displays $EXT_DISP primary"
-			xrandr --output $EXT_DISP --primary --auto --pos 0x0 --output $INT_DISP --auto --left-of $EXT_DISP
-    fi
+  intprimary|ip|classic)
+			setup_connected_displays $EXT_DISP right-of $INT_DISP
   ;;
-  classicalt)
-    if [ $DISPLAY_COUNT -lt 2 ]; then
-      echo "you don't have two displays"
-      exit 1
-    else
-      echo "using both displays $INT_DISP primary"
-			xrandr --output $INT_DISP --primary --auto --pos 0x0 --output $EXT_DISP --auto --right-of $INT_DISP
-    fi
+  intprimaryreverse|ipr|classicalt)
+			setup_connected_displays $EXT_DISP left-of $INT_DISP
   ;;
   tp|toggle_primary)
     if [ $DISPLAY_COUNT -lt 2 ]; then
